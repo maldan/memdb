@@ -22,6 +22,8 @@ struct DocumentInfo {
 };
 
 static size_t stackDocumentId = 0;
+static size_t totalDocSize = 0;
+static size_t totalWords = 0;
 bool echoIsEnabled = true;
 bool lastStatus = true;
 
@@ -39,10 +41,13 @@ struct Vector *analyze_doc_folder(char *path) {
     EQU_VECTOR(docList) = file_search(path, "^[a-zA-Z0-9_]+\\.txt$", 0);
     NEW_VECTOR(documentInfoList, struct DocumentInfo *)
 
+    totalDocSize = 0;
+    totalWords = 0;
     for (size_t i = 0; i < docList->length; ++i) {
-        // Get first 255 bytes of each file for analyze
+        // Get each file data for analyze
         struct FileInfo *fileInfo = (struct FileInfo *) (docList->list[i]);
         EQU_BLOB(fileData) = file_get_contents(fileInfo->path);
+        totalDocSize += fileData->length;
 
         // New document info
         struct DocumentInfo *newDoc = MEMORY_ALLOCATE_STRUCT(DocumentInfo);
@@ -57,6 +62,7 @@ struct Vector *analyze_doc_folder(char *path) {
 
         for (size_t j = 0; j < lines->length; ++j) {
             char *line = lines->list[j]->list;
+            totalWords += chars_char_amount(line, ' ');
 
             // Break if end of headers
             if (lines->list[j]->length == 0) {
@@ -301,7 +307,6 @@ int main(int argc, char **argv) {
         MEMORY_FREE(replaceCmd)
         DESTROY_STRING(X)
 
-
         EQU_STRING_ARRAY(cmdTuple) = chars_split(cmd, " ", 0);
 
         if (CHARS_EQUAL(cmd, "@")) {
@@ -313,6 +318,20 @@ int main(int argc, char **argv) {
             || CHARS_EQUAL(cmd, "exit")
             || CHARS_EQUAL(cmd, "quit"))
             break;
+
+        // Exit
+        if (CHARS_EQUAL(cmd, "stat")) {
+            printf("Total docs: %zu\n", docList->length);
+            printf("Total docs size: %zu bytes\n", totalDocSize);
+
+            size_t sectionAmount = 0;
+            for (size_t i = 0; i < docList->length; ++i) {
+                struct DocumentInfo *documentInfo = docList->list[i];
+                sectionAmount += documentInfo->sectionList->length;
+            }
+            printf("Total sections: %zu\n", sectionAmount);
+            printf("Total words: ~%zu\n", totalWords);
+        }
 
         // List of all documents
         if (CHARS_EQUAL(cmd, "l") || CHARS_EQUAL(cmd, "list")) {
