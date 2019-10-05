@@ -36,7 +36,7 @@ void destroy_documents(struct Vector *documentList) {
 
 struct Vector *analyze_doc_folder(char *path) {
     // Get all txt files from docs folder
-    EQU_VECTOR(docList) = file_search(path, "^[a-zA-Z0-9]+\\.txt$", 0);
+    EQU_VECTOR(docList) = file_search(path, "^[a-zA-Z0-9_]+\\.txt$", 0);
     NEW_VECTOR(documentInfoList, struct DocumentInfo *)
 
     for (size_t i = 0; i < docList->length; ++i) {
