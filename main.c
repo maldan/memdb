@@ -164,6 +164,7 @@ void search_by_all(struct Vector *documentList, char *query, uint32_t flags) {
         bool isMatch = false;
         char *matchedBy = "";
         char *matchedValue = "";
+        size_t sectionId = 0;
 
         // Try title
         if (chars_match(documentInfo->title, query, REG_ICASE) && (flags & SEARCH_BY_ALL || flags & SEARCH_BY_TITLE)) {
@@ -201,6 +202,7 @@ void search_by_all(struct Vector *documentList, char *query, uint32_t flags) {
                 if (chars_match(section->name, query, REG_ICASE) && (flags & SEARCH_BY_ALL || flags & SEARCH_BY_SECTION)) {
                     isMatch = true;
                     matchedBy = "Section";
+                    sectionId = j;
                     matchedValue = section->name;
                     break;
                 }
@@ -210,13 +212,21 @@ void search_by_all(struct Vector *documentList, char *query, uint32_t flags) {
         if ((flags & PRINT_FIRST_RESULT) && isMatch) {
             EQU_BLOB(file) = file_get_contents(documentInfo->path);
 
-            // Search start of file
-            for (size_t j = 0; j < documentInfo->sectionList->length; ++j) {
-                struct DocumentSection *documentSection = documentInfo->sectionList->list[j];
-                if (echoIsEnabled) printf("SECTION %s [%zu:%zu]\n" "\n", documentSection->name, documentSection->start, documentSection->end);
+            // Print section
+            if (CHARS_EQUAL(matchedBy, "Section")) {
+                struct DocumentSection *documentSection = documentInfo->sectionList->list[sectionId];
                 char *part = chars_substr((char *)file->list, documentSection->start, documentSection->end);
                 if (echoIsEnabled) printf("%s\n", part);
                 MEMORY_FREE(part)
+            } else {
+                // Search start of file
+                for (size_t j = 0; j < documentInfo->sectionList->length; ++j) {
+                    struct DocumentSection *documentSection = documentInfo->sectionList->list[j];
+                    if (echoIsEnabled) printf("SECTION %s [%zu:%zu]\n" "\n", documentSection->name, documentSection->start, documentSection->end);
+                    char *part = chars_substr((char *)file->list, documentSection->start, documentSection->end);
+                    if (echoIsEnabled) printf("%s\n", part);
+                    MEMORY_FREE(part)
+                }
             }
 
             lastStatus = true;
@@ -246,6 +256,7 @@ int main(int argc, char **argv) {
     EQU_ARGS(argList) = args_init(argc, argv);
     bool isInteractiveMode = args_has_flags(argList, "i");
     char *startCmd = args_get_key_value(argList, "query");
+    if (!startCmd) startCmd = "";
 
     char *homeDir = os_home_dir("docs/");
     struct Vector *docList = analyze_doc_folder(homeDir);
@@ -367,7 +378,7 @@ int main(int argc, char **argv) {
         }
 
         // Search and print first result
-        if (CHARS_EQUAL(cmdTuple->list[0]->list, "sapf") && cmdTuple->length > 1) {
+        if (CHARS_EQUAL(cmdTuple->list[0]->list, "sp") && cmdTuple->length > 1) {
             search_by_all(docList, cmdTuple->list[1]->list, SEARCH_BY_ALL | PRINT_FIRST_RESULT);
         }
 
